@@ -1,0 +1,163 @@
+#!/bin/sh
+# unidir
+# Unify the content of multiple directories into one using symlinks.
+
+unidir_main() {
+	e_args=16
+	e_no_realpath=17
+
+	which realpath 2>&1 > /dev/null \
+		|| _fatal $e_no_realpath "realpath missing."
+
+	scriptpath="` realpath "$0" `"  
+	scriptname="` basename "$scriptpath" `"
+	scriptdir="` dirname "$scriptpath" `"
+
+	declare -i OVERRIDE_SYMLINKS
+	export OVERRIDE_SYMLINKS
+	[ -z "$OVERRIDE_SYMLINKS" ] && OVERRIDE_SYMLINKS=0
+
+	while getopts fh opt
+	do
+		case $opt in
+			f) OVERRIDE_SYMLINKS=1 ;;
+			h) unidir_usage && return ;;
+			*) _invalid_opt ;;
+		esac
+	done
+
+	shift ` expr $OPTIND - 1 `
+
+	[ -z "$cmd" ] && cmd="process"
+
+	case "$cmd" in
+		process) "unidir_$cmd" "$@" ;;
+		help|usage) unidir_usage ;;
+		*) _invalid_cmd ;;
+	esac
+
+	return $?
+}
+
+unidir_process() {
+	[ $# -lt 2 ] \
+		&& _fatal $e_args \
+			"Missing arguments. Must specify source & destination directories. See -h for details."
+
+	local dst
+	for dst; do true; done
+
+	shopt -s dotglob
+
+	while [ $# -gt 1 ]
+	do
+		local src
+		src="$1"
+		_merge_into "$src" "$dst"
+		shift
+	done
+}
+
+unidir_usage() {
+cat <<USAGE
+Usage: $scriptname [options] src1 [src2 srcn...] dst
+
+Unify the content of multiple directories into one using symlinks.
+
+The first directory will have priority if symlinks are not overridden when present.
+
+Available options:
+
+	-f        Override symlinks if one is present.
+	-h        This help screen.
+
+Example:
+
+	src/
+		1/a
+		2/a
+		3/b
+	dst/
+
+	% $scriptname src/* dst
+
+	# If -f is not set:
+
+	dst/
+		1/a -> ../src/1/a
+		3/b -> ../src/3/b
+
+	# If -f is set:
+
+	dst/
+		2/a -> ../src/2/a
+		3/b -> ../src/3/b
+
+USAGE
+}
+
+_echo() {
+	echo "$@"
+}
+
+_error() {
+	_echo "$@" >&2
+}
+
+_fatal() {
+	local exitcode
+	exitcode="$1"
+	shift
+	_error "$@"
+	exit "$exitcode"
+}
+
+_invalid_opt() {
+	_error "Invalid option: $opt"
+	_echo
+	unidir_usage
+	exit $e_args
+}
+
+_link() {
+	local basename dst dstpath entry srcpath
+
+	entry="$1"
+	dst="$2"
+	basename="` basename "$entry" `"
+	dstpath="$dst/$basename"
+
+	if [ $OVERRIDE_SYMLINKS -ne 0 ]
+	then
+		if [ -L "$dstpath" ]
+		then
+			rm "$dstpath"
+		else
+			_error "$dstpath exists and is not a symlink. Skipping..."
+			return
+		fi
+	fi
+
+	[ -e "$dstpath" ] && return 1
+
+	srcpath="` realpath --relative-to "$dst" "$entry" `"
+
+	_echo "$dstpath => $entry"
+	ln -s "$srcpath" "$dstpath"
+}
+
+_merge_into() {
+	local dst src
+
+	src="$1"
+	dst="$2"
+
+	[ ! -d "$src" ] && _error "$src not a directory. Skipping..." && return 1
+
+	for entry in "$src/"*
+	do
+		_link "$entry" "$dst"
+	done
+}
+
+unidir_main "$@"
