@@ -2,37 +2,36 @@
 # unidir
 # Unify the content of multiple directories into one using symlinks.
 
+VERSION="1.0.0"
+
 unidir_main() {
 	e_args=16
 	e_no_realpath=17
 
-	which realpath 2>&1 > /dev/null \
+	which realpath > /dev/null 2>&1 \
 		|| _fatal $e_no_realpath "realpath missing."
 
-	scriptpath="` realpath "$0" `"  
-	scriptname="` basename "$scriptpath" `"
-	scriptdir="` dirname "$scriptpath" `"
+	scriptpath="$( realpath "$0" )"  
+	scriptname="$( basename "$scriptpath" )"
 
-	declare -i OVERRIDE_SYMLINKS
-	export OVERRIDE_SYMLINKS
-	[ -z "$OVERRIDE_SYMLINKS" ] && OVERRIDE_SYMLINKS=0
+	OVERRIDE_SYMLINKS=0
 
-	while getopts fh opt
+	while getopts fhv opt
 	do
 		case $opt in
 			f) OVERRIDE_SYMLINKS=1 ;;
-			h) unidir_usage && return ;;
+			h) cmd=help ;;
+			v) cmd=version ;;
 			*) _invalid_opt ;;
 		esac
 	done
 
-	shift ` expr $OPTIND - 1 `
+	shift $(( OPTIND - 1 ))
 
 	[ -z "$cmd" ] && cmd="process"
 
 	case "$cmd" in
-		process) "unidir_$cmd" "$@" ;;
-		help|usage) unidir_usage ;;
+		help|process|version) "unidir_$cmd" "$@" ;;
 		*) _invalid_cmd ;;
 	esac
 
@@ -44,22 +43,20 @@ unidir_process() {
 		&& _fatal $e_args \
 			"Missing arguments. Must specify source & destination directories. See -h for details."
 
-	local dst
 	for dst; do true; done
-
-	shopt -s dotglob
 
 	while [ $# -gt 1 ]
 	do
-		local src
 		src="$1"
 		_merge_into "$src" "$dst"
 		shift
 	done
 }
 
-unidir_usage() {
+unidir_help() {
 cat <<USAGE
+$scriptname $VERSION
+
 Usage: $scriptname [options] src1 [src2 srcn...] dst
 
 Unify the content of multiple directories into one using symlinks.
@@ -96,6 +93,10 @@ Example:
 USAGE
 }
 
+unidir_version() {
+	_echo "$scriptname $VERSION"
+}
+
 _echo() {
 	echo "$@"
 }
@@ -105,7 +106,6 @@ _error() {
 }
 
 _fatal() {
-	local exitcode
 	exitcode="$1"
 	shift
 	_error "$@"
@@ -120,14 +120,12 @@ _invalid_opt() {
 }
 
 _link() {
-	local basename dst dstpath entry srcpath
-
 	entry="$1"
 	dst="$2"
-	basename="` basename "$entry" `"
+	basename="$( basename "$entry" )"
 	dstpath="$dst/$basename"
 
-	if [ $OVERRIDE_SYMLINKS -ne 0 ]
+	if [ -e "$dstpath" ] && [ $OVERRIDE_SYMLINKS -ne 0 ]
 	then
 		if [ -L "$dstpath" ]
 		then
@@ -140,19 +138,18 @@ _link() {
 
 	[ -e "$dstpath" ] && return 1
 
-	srcpath="` realpath --relative-to "$dst" "$entry" `"
+	srcpath="$( realpath --relative-to "$dst" "$entry" )"
 
 	_echo "$dstpath => $entry"
 	ln -s "$srcpath" "$dstpath"
 }
 
 _merge_into() {
-	local dst src
-
 	src="$1"
 	dst="$2"
 
 	[ ! -d "$src" ] && _error "$src not a directory. Skipping..." && return 1
+	[ "$( ls "$src" 2>/dev/null | wc -l | tr -d ' ' )" = "0" ] && return 1
 
 	for entry in "$src/"*
 	do
