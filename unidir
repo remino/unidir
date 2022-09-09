@@ -2,7 +2,7 @@
 # unidir
 # Unify the content of multiple directories into one using symlinks.
 
-VERSION="1.0.1"
+VERSION="1.0.2"
 
 unidir_main() {
 	e_args=16
@@ -98,7 +98,7 @@ unidir_version() {
 }
 
 _dir_empty() {
-	[ "$( find "$src" -mindepth 1 -maxdepth 1 2>/dev/null | wc -l | tr -d ' ' )" = "0" ]
+	[ "$( find "$src" -maxdepth 1 -mindepth 1 2>/dev/null | wc -l | tr -d ' ' )" = "0" ]
 }
 
 _echo() {
@@ -129,18 +129,21 @@ _link() {
 	basename="$( basename "$entry" )"
 	dstpath="$dst/$basename"
 
-	if [ -e "$dstpath" ] && [ $OVERRIDE_SYMLINKS -ne 0 ]
+	if [ -e "$dstpath" ]
 	then
-		if [ -L "$dstpath" ]
+		if [ $OVERRIDE_SYMLINKS -eq 0 ]
 		then
-			rm "$dstpath"
+			[ -e "$dstpath" ] && return 1
 		else
-			_error "$dstpath exists and is not a symlink. Skipping..."
-			return
+			if [ -L "$dstpath" ]
+			then
+				rm "$dstpath"
+			else
+				_error "$dstpath exists and is not a symlink. Skipping..."
+				return
+			fi
 		fi
 	fi
-
-	[ -e "$dstpath" ] && return 1
 
 	srcpath="$( realpath --relative-to "$dst" "$entry" )"
 
@@ -155,11 +158,11 @@ _merge_into() {
 	[ ! -d "$src" ] && _error "$src not a directory. Skipping..." && return 1
 	_dir_empty "$src" && return 1
 
-	find "$src" -maxdepth 1 | while read -r entry
+	find "$src" -maxdepth 1 -mindepth 1 | while read -r entry
 	do
 		case "$entry" in
 			.|..) continue ;;
-			*) _link "$( basename "$entry" )" "$dst" ;;
+			*) _link "$entry" "$dst" ;;
 		esac
 	done
 }
