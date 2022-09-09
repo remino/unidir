@@ -1,6 +1,9 @@
 unidir
 ======
 
+```
+unidir 1.0.0
+
 Usage: unidir [options] src1 [src2 srcn...] dst
 
 Unify the content of multiple directories into one using symlinks.
@@ -9,14 +12,11 @@ The first directory will have priority if symlinks are not overridden when prese
 
 Available options:
 
-```
 	-f        Override symlinks if one is present.
 	-h        This help screen.
-```
 
 Example:
 
-```
 	src/
 		1/a
 		2/a
@@ -36,5 +36,6 @@ Example:
 	dst/
 		2/a -> ../src/2/a
 		3/b -> ../src/3/b
+
 ```
 
