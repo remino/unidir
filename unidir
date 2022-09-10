@@ -2,7 +2,7 @@
 # unidir
 # Unify the content of multiple directories into one using symlinks.
 
-VERSION="1.0.2"
+VERSION="1.0.3"
 
 unidir_main() {
 	e_args=16
@@ -129,7 +129,7 @@ _link() {
 	basename="$( basename "$entry" )"
 	dstpath="$dst/$basename"
 
-	if [ -e "$dstpath" ]
+	if [ -e "$dstpath" ] || [ -L "$dstpath" ]
 	then
 		if [ $OVERRIDE_SYMLINKS -eq 0 ]
 		then
