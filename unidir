@@ -57,18 +57,18 @@ unidir_help() {
 cat <<USAGE
 $scriptname $VERSION
 
-Usage: $scriptname [options] src1 [src2 srcn...] dst
+USAGE: $scriptname [<options>] <src1> [<src2> <srcn>...] <dst>
 
 Unify the content of multiple directories into one using symlinks.
 
 The first directory will have priority if symlinks are not overridden when present.
 
-Available options:
+OPTIONS
 
 	-f        Override symlinks if one is present.
 	-h        This help screen.
 
-Example:
+EXAMPLE
 
 	src/
 		1/a

@@ -2,7 +2,7 @@ unidir
 ======
 
 ```
-unidir 1.0.0
+unidir 1.0.3
 
 Usage: unidir [options] src1 [src2 srcn...] dst
 
